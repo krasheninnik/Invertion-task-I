@@ -26,11 +26,14 @@ class Task {
 public:
 	void init();
 	void setParams();
+	void setParams(double p);
+	void getValues(std::vector<double>& v);
 	void solve();
 	void saveResult();
 
 private:
 	void formatingGlobalMatrixPortrait();
+	void reset();
 
 	void calculateGlobalMatrixAndRightPart();
 	void setFirstBoundaryConditions();

@@ -2,6 +2,7 @@
 #include "matrix.h"
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
 
 #pragma region vector_operations
 inline void vectorAdd(std::vector<double>& a, std::vector<double>& b, std::vector<double>& result);
@@ -387,8 +388,9 @@ void SparseMatrix::LOS(std::vector<double>& x,
 	std::vector<double>& f, std::vector<double>& r, std::vector<double>& z,
 	std::vector<double>& p, std::vector<double>& temp) {
 
+	std::ofstream solver("solver.txt");
 
-	double a, b, scalar_pp, scalar_rr, discrepancy, norm_f;
+	double a, b, scalar_pp, scalar_rr, discrepancy = 1e40, norm_f;
 	int iter = 0;
 
 	// r0 = f - Ax0:
@@ -404,8 +406,10 @@ void SparseMatrix::LOS(std::vector<double>& x,
 	double CalcTimeStart = clock() / (double)CLOCKS_PER_SEC;
 	// iterations:
 	do {
-		if (iter > max_iter) break;
-
+		if (iter > max_iter) {
+			solver << "max iter exit: discrepance == " << discrepancy << std::endl;
+			break;
+		}
 		//scalar_rr = scalar_product(r, r);
 		scalar_pp = scalarProduct(p, p);		// scalar_pp = (pk-1,pk-1)
 		a = scalarProduct(p, r) / scalar_pp; // ak = (pk-1, rk-1)/(pk-1,pk-1)
@@ -417,6 +421,7 @@ void SparseMatrix::LOS(std::vector<double>& x,
 		if (calcNorm(temp) / calcNorm(x) < step_eps) {
 #ifdef CALCULATE
 			printf("\nstep out\n");
+			solver << "step out on " << iter << " with  discrepance == " << discrepancy << std::endl;
 #endif
 			break;
 		}
@@ -443,15 +448,12 @@ void SparseMatrix::LOS(std::vector<double>& x,
 		discrepancy = sqrt(scalar_rr) / norm_f;
 
 		iter++;
-#ifdef _DEBUG
-		printf("\riter: %d\t %.15e", iter, discrepancy);
 
-
-
-
-
-#endif
 	} while (discrepancy > eps);
+	
+	solver << "good solve, discrepance == " << discrepancy << std::endl;
+
+
 	double CalcTimeStop = clock() / (double)CLOCKS_PER_SEC;
 	//printf("\nEx Time: %f sec\n", (CalcTimeStop - CalcTimeStart));
 }
@@ -639,6 +641,8 @@ int SparseMatrix::MCG(std::vector<double>& x, std::vector<double>& x_min,
 	std::vector<double>& f, std::vector<double>& r, std::vector<double>& z,
 	std::vector<double>& temp, std::vector<double> temp2) {
 
+	std::ofstream solver("solver.txt");
+
 	double a, b, scalar_rr, scalar_rr_prev, norm_f, discrepancy, min_discrepancy;
 	int iter = 0;
 	// system symmetrization:
@@ -657,7 +661,7 @@ int SparseMatrix::MCG(std::vector<double>& x, std::vector<double>& x_min,
 	scalar_rr_prev = scalarProduct(r, r);		// (rk-1, rk-1)
 	do {
 		if (iter > max_iter) {
-			//vector_assigment(x, x_min);
+			solver << "max iter exit: discrepance == " << discrepancy << std::endl;
 			break;
 		}
 
@@ -672,6 +676,7 @@ int SparseMatrix::MCG(std::vector<double>& x, std::vector<double>& x_min,
 		// step out:
 		if (calcNorm(temp) / calcNorm(x) < step_eps) {
 			//std::cout << "step OUT!\n"; 
+			solver << "step out on " << iter << " with  discrepance == " << discrepancy << std::endl;
 			break;
 		}
 
@@ -709,6 +714,7 @@ int SparseMatrix::MCG(std::vector<double>& x, std::vector<double>& x_min,
 
 	} while (discrepancy > eps);
 
+	solver << "good solve, discrepance == " << discrepancy << std::endl;
 	vectorAssigment(x, x_min);
 	return iter;
 }

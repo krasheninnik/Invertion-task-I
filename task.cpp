@@ -8,13 +8,43 @@
 #include <iostream>
 
 void Task::setParams() {
-	lambda = std::vector<double>(amountSubareas);
-	sigma = std::vector<func2>(amountSubareas);
-	
-	lambda[0] = 1;
+	// set default param Lambda
+	lambda[0] = 0.1;
 
+	// set test functions
 	uExact = [](const double& r, const double& z) {return r*r; };
-	fFunc = [](const double& r, const double& z) {return -4; };
+	fFunc = [&](const double& r, const double& z) {return -4 * lambda[0]; };
+}
+
+void Task::setParams(double p) {
+	// set default param Lambda
+	lambda[0] = 0.1;
+
+	// set outer function from InvertionTask
+	fFunc = [=](const double& r, const double& z) {return p; };
+};
+
+void Task::reset() {
+	// reset global f
+	for (int i = 0; i < f.size(); i++) f[i] = 0;
+
+	globalMatrix.resetMatrix();
+}
+
+void Task::getValues(std::vector<double>& values) {
+	reset();
+	solve();
+	
+	int k = 1;
+	// source
+	values[0] = q[k*0];
+	values[1] = q[k*1];
+	values[2] = q[k*2];
+	values[3] = q[k*3];
+	values[4] = q[k*5];
+	values[5] = q[k*6];
+	values[6] = q[k*10];
+	values[7] = q[k*11];
 }
 
 void Task::formatingGlobalMatrixPortrait() {
@@ -192,11 +222,11 @@ void Task::init() {
 	///////////////////////////////////////////////////////////
 	/////////////////////////FOR TEST//////////////////////////
 	///////////////////////////////////////////////////////////
-	for (int i = 0; i < yaxis.size(); i++) {
+	for (int i = 0; i < yaxis.size() - 1; i++) {
 		firstBoundaryConditionsNodesIndex.push_back(i * xaxis.size());
 	}
 
-	for (int i = 0; i < xaxis.size(); i++) {
+	for (int i = 1; i < xaxis.size() - 1; i++) {
 		firstBoundaryConditionsNodesIndex.push_back(i);
 	}
 
@@ -229,7 +259,7 @@ void Task::init() {
 	
 	// init vector of params of equals in subareas:
 	lambda = std::vector<double>(amountSubareas);
-	sigma = std::vector<func2>(amountSubareas); ////////////// think about this !!!
+	sigma = std::vector<func2>(amountSubareas);
 
 	fin.close();
 }
@@ -297,29 +327,28 @@ void Task::solve() {
 	int matrixDim = nodes.size();
 	int amountElems = globalMatrix.getAmountElems();
 	std::vector<double> r = std::vector<double>(matrixDim);
-	std::vector<double> r_0 = std::vector<double>(matrixDim);
-
 	std::vector<double> z = std::vector<double>(matrixDim);
 	std::vector<double> p = std::vector<double>(matrixDim);
 	std::vector<double> temp = std::vector<double>(matrixDim);
 	std::vector<double> temp2 = std::vector<double>(matrixDim);
 
-	std::vector<double> v = std::vector<double>(matrixDim);
-	std::vector<double> y = std::vector<double>(matrixDim);
-	std::vector<double> h = std::vector<double>(matrixDim);
-	std::vector<double> s = std::vector<double>(matrixDim);
-	std::vector<double> t = std::vector<double>(matrixDim);
+	//std::vector<double> r_0 = std::vector<double>(matrixDim);
+	//std::vector<double> v = std::vector<double>(matrixDim);
+	//std::vector<double> y = std::vector<double>(matrixDim);
+	//std::vector<double> h = std::vector<double>(matrixDim);
+	//std::vector<double> s = std::vector<double>(matrixDim);
+	//std::vector<double> t = std::vector<double>(matrixDim);
 
-	std::vector<double> ud = std::vector<double>(matrixDim);
-	std::vector<double> l = std::vector<double>(amountElems);
-	std::vector<double> u = std::vector<double>(amountElems);
+	//std::vector<double> ud = std::vector<double>(matrixDim);
+	//std::vector<double> l = std::vector<double>(amountElems);
+	//std::vector<double> u = std::vector<double>(amountElems);
 
 	// need input things:
 	epsDiscrep = 1e-15;
 	calculateGlobalMatrixAndRightPart();
 	//int iter = globalMatrix.BCGSTAB(l, ud, u, q, f, r, r_0, z, temp, temp2, v, p, y, h, s, t);
-	globalMatrix.LOS(q, f, r, z, p, temp);
-	//globalMatrix.MCG(q, p, f, r, z, temp, temp2);
+	//globalMatrix.LOS(q, f, r, z, p, temp);
+	globalMatrix.MCG(q, p, f, r, z, temp, temp2);
 
 	//LOS_LU(std::vector<double>& l, std::vector<double>& ud, std::vector<double>& u,
 	//	std::vector<double>& x, std::vector<double>& f,
@@ -335,7 +364,7 @@ void Task::solve() {
 void Task::calculateLocalMatrixOfRigid(uint32_t elemNum) {	
 
 	const auto& elem = elems[elemNum];
-	const double coef = 1;
+	const double coef = lambda[0];
 
 	const double R1 = nodes[elem.lb].r;
 	const double R2 = nodes[elem.rb].r;
@@ -475,8 +504,6 @@ void Task::addLocalRigtPartToGlobal(uint32_t num) {
 	f[elem.rb] += fLocal[1];
 	f[elem.lt] += fLocal[2];
 	f[elem.rt] += fLocal[3];
-
-
 }
 
 void Task::setFirstBoundaryConditions() {
